@@ -357,12 +357,11 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
   (defadvice! doom--comint-enable-undo-a (process _string)
     :after #'comint-output-filter
     (with-current-buffer (process-buffer process)
-      (let ((start-marker comint-last-output-start))
-        (when (and start-marker
-                (< start-marker
-                  (or (if process (process-mark process))
-                    (point-max-marker)))
-                (eq (char-before start-marker) ?\n)) ;; Account for some of the IELM’s wilderness.
+      (when-let* ((start-marker comint-last-output-start))
+        (when (and (< start-marker
+                      (or (if process (process-mark process))
+                          (point-max-marker)))
+                   (eq (char-before start-marker) ?\n)) ;; Account for some of the IELM’s wilderness.
           (buffer-enable-undo)
           (setq buffer-undo-list nil)))))
 
@@ -376,12 +375,11 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
   ;;   the broken text in the buffer),
   (defadvice! doom--comint-protect-output-in-visual-modes-a (process _string)
     :after #'comint-output-filter
-    (with-current-buffer (process-buffer process)
     ;; Adapted from https://github.com/michalrus/dotfiles/blob/c4421e361400c4184ea90a021254766372a1f301/.emacs.d/init.d/040-terminal.el.symlink#L33-L49
-      (let* ((start-marker comint-last-output-start)
-              (end-marker (or (if process (process-mark process))
-                            (point-max-marker))))
-        (when (and start-marker (< start-marker end-marker));; Account for some of the IELM’s wilderness.
+    (with-current-buffer (process-buffer process)
+      (let ((start-marker comint-last-output-start)
+            (end-marker (process-mark process)))
+        (when (and start-marker (< start-marker end-marker)) ;; Account for some of the IELM’s wilderness.
           (let ((inhibit-read-only t))
             ;; Make all past output read-only (disallow buffer modifications)
             (add-text-properties comint-last-input-start (1- end-marker) '(read-only t))
@@ -393,7 +391,7 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
             ;; Protect fence (newline of input, just before output).
             (when (eq (char-before start-marker) ?\n)
               (remove-text-properties (1- start-marker) start-marker '(rear-nonsticky))
-              (add-text-properties    (1- start-marker) start-marker '(read-only t))))))))
+              (add-text-properties (1- start-marker) start-marker '(read-only t))))))))
 
   ;; UX: If the user is anywhere but the last prompt, typing should move them
   ;;   there instead of unhelpfully spew read-only errors at them.
